@@ -30,7 +30,7 @@ jobs:
         env:
           VITE_BASE_PATH: ${{ vars.VITE_BASE_PATH || '/' }}
 
-      # GitHub Pages has no SPA fallback, so a refresh on /clinicpilot-revive/patients
+      # GitHub Pages has no SPA fallback, so a refresh on /patients
       # would 404 without this. Pages serves 404.html for unmatched paths while
       # keeping the URL, and react-router then reads the real path.
       - run: cp dist/index.html dist/404.html

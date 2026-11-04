@@ -16,7 +16,7 @@ and `clinicpilot-ymdc`. Owned by Pluto (Meesum Mir), CyberHealth Solutions.
 - React 18 + Vite. Push to `main` deploys to GitHub Pages through
   `.github/workflows/deploy.yml`. The Supabase URL and publishable key live in
   the committed `.env.production`; both are public by design, and RLS is what protects
-  the data. Never put a secret key there. Site: https://meesummeer.github.io/clinicpilot-revive/
+  the data. Never put a secret key there. Site: https://clinicpilot.revivehealthcarepk.com/
 - Supabase project `clinicpilot-revive`, ref `urwdtonvkibmeixzzmkj`, region `ap-northeast-1`.
   The key in use is the publishable key, never a secret key.
 - `supabase/` holds the schema, in run order. There is no migration tool: new SQL
@@ -33,6 +33,8 @@ and `clinicpilot-ymdc`. Owned by Pluto (Meesum Mir), CyberHealth Solutions.
 - Circle session counts are computed from `service_log`, never stored.
 - `patients.mr_no` comes from a database sequence. `members.card_number` is issued by
   the app and protected by a unique index, with a retry on conflict.
+- The site is served from the custom domain root, so the deploy builds with base `/`.
+  `public/CNAME` and the Pages custom domain setting must stay in sync.
 - GitHub Pages has no SPA fallback, so the build copies `index.html` to `404.html`.
 
 ## Known gaps
