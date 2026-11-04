@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase, fetchAllRows } from '../lib/supabaseClient';
-import { formatDate, formatMoney, todayKarachi, startOfMonthKarachi } from '../lib/format';
+import { formatDate, formatMoney, todayKarachi } from '../lib/format';
 import { toast } from '../components/Toast';
 import Modal from '../components/Modal';
 
@@ -9,19 +9,19 @@ import Modal from '../components/Modal';
 const STATUSES = ['PAID', 'UNPAID', 'DUE_THIS_MONTH', 'DISPUTED'];
 
 const STATUS_META = {
-  PAID:           { label: 'Paid',           color: 'var(--teal)',   bg: 'rgba(45,138,138,.15)' },
-  UNPAID:         { label: 'Unpaid',         color: '#e07b3f',       bg: 'rgba(224,123,63,.15)' },
-  DUE_THIS_MONTH: { label: 'Due This Month', color: '#d4a017',       bg: 'rgba(212,160,23,.15)' },
-  DISPUTED:       { label: 'Disputed',       color: '#c0556a',       bg: 'rgba(192,85,106,.15)' },
+  PAID:           { label: 'Paid',           color: '#16a34a', bg: '#dcfce7', border: '#86efac' },
+  UNPAID:         { label: 'Unpaid',         color: '#dc2626', bg: '#fee2e2', border: '#fca5a5' },
+  DUE_THIS_MONTH: { label: 'Due This Month', color: '#1d4ed8', bg: '#dbeafe', border: '#93c5fd' },
+  DISPUTED:       { label: 'Disputed',       color: '#a16207', bg: '#fef9c3', border: '#fde047' },
 };
 
 function StatusBadge({ status }) {
   const m = STATUS_META[status] || STATUS_META.UNPAID;
   return (
     <span style={{
-      display: 'inline-block', padding: '2px 10px', borderRadius: 20,
-      fontSize: 11, fontWeight: 600, letterSpacing: '.4px',
-      color: m.color, background: m.bg, border: `1px solid ${m.color}44`,
+      display: 'inline-block', padding: '3px 10px', borderRadius: 20,
+      fontSize: 11, fontWeight: 600, letterSpacing: '.3px',
+      color: m.color, background: m.bg, border: `1px solid ${m.border}`,
     }}>
       {m.label}
     </span>
@@ -30,25 +30,28 @@ function StatusBadge({ status }) {
 
 function fmt(n) { return 'Rs ' + (Number(n) || 0).toLocaleString('en-PK', { maximumFractionDigits: 0 }); }
 
-// ── analytics cards ──────────────────────────────────────────────────────────
+// ── stat card ─────────────────────────────────────────────────────────────────
 
-function StatCard({ label, value, sub, accent }) {
+function StatCard({ label, value, sub, accentColor }) {
   return (
     <div style={{
-      background: 'var(--card)', border: '1px solid var(--border)',
-      borderRadius: 10, padding: '18px 20px',
-      borderLeft: accent ? `3px solid ${accent}` : undefined,
+      background: '#ffffff',
+      border: '1px solid #e5e7eb',
+      borderRadius: 10,
+      padding: '16px 20px',
+      boxShadow: '0 1px 3px rgba(0,0,0,.06)',
+      borderTop: accentColor ? `3px solid ${accentColor}` : '3px solid #e5e7eb',
     }}>
-      <div style={{ fontSize: 11, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.6px', marginBottom: 6 }}>{label}</div>
-      <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--fg)' }}>{value}</div>
-      {sub && <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 4 }}>{sub}</div>}
+      <div style={{ fontSize: 10, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '.6px', marginBottom: 6, fontWeight: 600 }}>{label}</div>
+      <div style={{ fontSize: 20, fontWeight: 700, color: '#111827' }}>{value}</div>
+      {sub && <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 3 }}>{sub}</div>}
     </div>
   );
 }
 
 // ── add / edit bill modal ────────────────────────────────────────────────────
 
-function BillModal({ bill, vendors, selectedVendorId, onClose, onSaved }) {
+function BillModal({ bill, vendors, selectedVendorId, onClose, onSaved, onDeleted }) {
   const isEdit = !!bill?.id;
   const [vendorId, setVendorId] = useState(bill?.vendor_id || selectedVendorId || vendors[0]?.id || '');
   const [invoiceId, setInvoiceId] = useState(bill?.invoice_id || '');
@@ -58,6 +61,7 @@ function BillModal({ bill, vendors, selectedVendorId, onClose, onSaved }) {
   const [status, setStatus] = useState(bill?.status || 'UNPAID');
   const [notes, setNotes] = useState(bill?.notes || '');
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [err, setErr] = useState('');
 
   async function handleSubmit(e) {
@@ -81,11 +85,35 @@ function BillModal({ bill, vendors, selectedVendorId, onClose, onSaved }) {
     onSaved();
   }
 
+  async function handleDelete() {
+    if (!confirm(`Delete this bill (${bill.items})?`)) return;
+    setDeleting(true);
+    const { error } = await supabase.from('vendor_bills').delete().eq('id', bill.id);
+    setDeleting(false);
+    if (error) { toast('Error: ' + error.message); return; }
+    toast('Bill deleted.');
+    onDeleted();
+  }
+
   const inp = {
-    background: 'var(--input-bg)', border: '1px solid var(--border)',
-    borderRadius: 6, padding: '8px 10px', color: 'var(--fg)', width: '100%', fontSize: 13,
+    background: '#f9fafb',
+    border: '1px solid #d1d5db',
+    borderRadius: 7,
+    padding: '8px 11px',
+    color: '#111827',
+    width: '100%',
+    fontSize: 13,
+    boxSizing: 'border-box',
   };
-  const lbl = { fontSize: 11, color: 'var(--muted)', display: 'block', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '.5px' };
+  const lbl = {
+    fontSize: 11,
+    color: '#6b7280',
+    display: 'block',
+    marginBottom: 4,
+    textTransform: 'uppercase',
+    letterSpacing: '.5px',
+    fontWeight: 600,
+  };
 
   return (
     <Modal title={isEdit ? 'Edit Bill' : 'Add Bill'} onClose={onClose}>
@@ -118,7 +146,9 @@ function BillModal({ bill, vendors, selectedVendorId, onClose, onSaved }) {
           <div>
             <label style={lbl}>Status</label>
             <select value={status} onChange={e => setStatus(e.target.value)} style={inp}>
-              {STATUSES.map(s => <option key={s} value={s}>{STATUS_META[s].label}</option>)}
+              {STATUSES.map(s => (
+                <option key={s} value={s}>{STATUS_META[s].label}</option>
+              ))}
             </select>
           </div>
         </div>
@@ -126,13 +156,21 @@ function BillModal({ bill, vendors, selectedVendorId, onClose, onSaved }) {
           <label style={lbl}>Notes</label>
           <input style={inp} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Check no., payment ref, etc." />
         </div>
-        {err && <p style={{ color: '#e07b3f', fontSize: 12, margin: 0 }}>{err}</p>}
+        {err && <p style={{ color: '#dc2626', fontSize: 12, margin: 0 }}>{err}</p>}
         <button type="submit" disabled={saving} style={{
-          background: 'var(--teal)', color: '#fff', border: 'none', borderRadius: 7,
-          padding: '10px 0', fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer',
+          background: '#0d9488', color: '#fff', border: 'none', borderRadius: 7,
+          padding: '10px 0', fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer', fontSize: 13,
         }}>
           {saving ? 'Saving…' : isEdit ? 'Save Changes' : 'Add Bill'}
         </button>
+        {isEdit && (
+          <button type="button" onClick={handleDelete} disabled={deleting} style={{
+            background: 'transparent', color: '#dc2626', border: '1px solid #fca5a5', borderRadius: 7,
+            padding: '8px 0', fontWeight: 600, cursor: deleting ? 'not-allowed' : 'pointer', fontSize: 13,
+          }}>
+            {deleting ? 'Deleting…' : '🗑 Delete Bill'}
+          </button>
+        )}
       </form>
     </Modal>
   );
@@ -144,8 +182,14 @@ function VendorModal({ onClose, onSaved }) {
   const [name, setName] = useState('');
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
-  const inp = { background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '8px 10px', color: 'var(--fg)', width: '100%', fontSize: 13 };
-  const lbl = { fontSize: 11, color: 'var(--muted)', display: 'block', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '.5px' };
+  const inp = {
+    background: '#f9fafb', border: '1px solid #d1d5db', borderRadius: 7,
+    padding: '8px 11px', color: '#111827', width: '100%', fontSize: 13, boxSizing: 'border-box',
+  };
+  const lbl = {
+    fontSize: 11, color: '#6b7280', display: 'block', marginBottom: 4,
+    textTransform: 'uppercase', letterSpacing: '.5px', fontWeight: 600,
+  };
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -165,10 +209,10 @@ function VendorModal({ onClose, onSaved }) {
           <label style={lbl}>Vendor Name</label>
           <input style={inp} value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Ahmed Khan" required autoFocus />
         </div>
-        {err && <p style={{ color: '#e07b3f', fontSize: 12, margin: 0 }}>{err}</p>}
+        {err && <p style={{ color: '#dc2626', fontSize: 12, margin: 0 }}>{err}</p>}
         <button type="submit" disabled={saving} style={{
-          background: 'var(--teal)', color: '#fff', border: 'none', borderRadius: 7,
-          padding: '10px 0', fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer',
+          background: '#0d9488', color: '#fff', border: 'none', borderRadius: 7,
+          padding: '10px 0', fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer', fontSize: 13,
         }}>
           {saving ? 'Saving…' : 'Add Vendor'}
         </button>
@@ -206,10 +250,7 @@ export default function VendorTracker() {
 
   useEffect(() => { document.title = 'Vendors — ClinicPilot'; load(); }, [load]);
 
-  // ── derived ────────────────────────────────────────────────────────────────
-
-  const thisMonth = todayKarachi().slice(0, 7); // "2026-11"
-
+  const thisMonth = todayKarachi().slice(0, 7);
   const vendorMap = useMemo(() => Object.fromEntries(vendors.map(v => [v.id, v.name])), [vendors]);
 
   const filtered = useMemo(() => bills.filter(b => {
@@ -224,7 +265,6 @@ export default function VendorTracker() {
     return true;
   }), [bills, selectedVendor, statusFilter, search, vendorMap]);
 
-  // stats computed over ALL bills (not just filtered)
   const stats = useMemo(() => {
     let totalUnpaid = 0, totalPaid = 0, paidThisMonth = 0, dueThisMonth = 0, disputed = 0;
     for (const b of bills) {
@@ -240,7 +280,6 @@ export default function VendorTracker() {
     return { totalUnpaid, totalPaid, paidThisMonth, dueThisMonth, disputed };
   }, [bills, thisMonth]);
 
-  // per-vendor summary (for selected vendor)
   const vendorStats = useMemo(() => {
     const subset = selectedVendor === 'ALL' ? bills : bills.filter(b => b.vendor_id === selectedVendor);
     let unpaid = 0, paid = 0;
@@ -251,21 +290,6 @@ export default function VendorTracker() {
     return { unpaid, paid };
   }, [bills, selectedVendor]);
 
-  async function quickStatus(bill, newStatus) {
-    const { error } = await supabase.from('vendor_bills').update({ status: newStatus }).eq('id', bill.id);
-    if (error) { toast('Error: ' + error.message); return; }
-    toast(`Marked ${STATUS_META[newStatus].label}.`);
-    setBills(prev => prev.map(b => b.id === bill.id ? { ...b, status: newStatus } : b));
-  }
-
-  async function deleteBill(bill) {
-    if (!confirm(`Delete this bill (${bill.items})?`)) return;
-    const { error } = await supabase.from('vendor_bills').delete().eq('id', bill.id);
-    if (error) { toast('Error: ' + error.message); return; }
-    toast('Bill deleted.');
-    setBills(prev => prev.filter(b => b.id !== bill.id));
-  }
-
   function afterSave() {
     setShowBillModal(false);
     setShowVendorModal(false);
@@ -273,79 +297,130 @@ export default function VendorTracker() {
     load();
   }
 
-  // ── styles ──────────────────────────────────────────────────────────────────
+  function afterDelete() {
+    setShowBillModal(false);
+    setEditingBill(null);
+    load();
+  }
+
+  // ── styles ────────────────────────────────────────────────────────────────
+
+  const page = {
+    background: '#f3f4f6',
+    minHeight: '100vh',
+    padding: '28px 32px',
+    color: '#111827',
+  };
 
   const selStyle = {
-    background: 'var(--input-bg)', border: '1px solid var(--border)',
-    borderRadius: 7, padding: '7px 12px', color: 'var(--fg)', fontSize: 13, cursor: 'pointer',
+    background: '#ffffff',
+    border: '1px solid #d1d5db',
+    borderRadius: 7,
+    padding: '7px 12px',
+    color: '#374151',
+    fontSize: 13,
+    cursor: 'pointer',
   };
+
   const btnPrimary = {
-    background: 'var(--teal)', color: '#fff', border: 'none',
-    borderRadius: 7, padding: '8px 16px', fontWeight: 600, fontSize: 13, cursor: 'pointer',
-  };
-  const btnGhost = {
-    background: 'transparent', color: 'var(--muted)', border: '1px solid var(--border)',
-    borderRadius: 7, padding: '8px 14px', fontWeight: 500, fontSize: 12, cursor: 'pointer',
+    background: '#0d9488',
+    color: '#fff',
+    border: 'none',
+    borderRadius: 7,
+    padding: '8px 16px',
+    fontWeight: 600,
+    fontSize: 13,
+    cursor: 'pointer',
   };
 
-  // ── render ──────────────────────────────────────────────────────────────────
+  const btnOutline = {
+    background: '#ffffff',
+    color: '#374151',
+    border: '1px solid #d1d5db',
+    borderRadius: 7,
+    padding: '8px 14px',
+    fontWeight: 500,
+    fontSize: 13,
+    cursor: 'pointer',
+  };
 
-  if (loading) return <div style={{ padding: 40, color: 'var(--muted)' }}>Loading vendors…</div>;
-  if (loadError) return <div style={{ padding: 40, color: '#e07b3f' }}>Error: {loadError}</div>;
+  // ── render ────────────────────────────────────────────────────────────────
+
+  if (loading) return <div style={{ padding: 40, color: '#6b7280' }}>Loading vendors…</div>;
+  if (loadError) return <div style={{ padding: 40, color: '#dc2626' }}>Error: {loadError}</div>;
 
   return (
-    <div style={{ padding: '28px 32px', maxWidth: 1100 }}>
+    <div style={page}>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap', gap: 10 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap', gap: 10 }}>
         <div>
-          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700 }}>Vendor Tracker</h1>
-          <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--muted)' }}>Bills, payments, and outstanding balances across all vendors</p>
+          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: '#111827' }}>Vendor Tracker</h1>
+          <p style={{ margin: '4px 0 0', fontSize: 13, color: '#6b7280' }}>Bills, payments, and outstanding balances across all vendors</p>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
-          <button style={btnGhost} onClick={() => setShowVendorModal(true)}>+ Add Vendor</button>
+          <button style={btnOutline} onClick={() => setShowVendorModal(true)}>+ Add Vendor</button>
           <button style={btnPrimary} onClick={() => { setEditingBill(null); setShowBillModal(true); }}>+ Add Bill</button>
         </div>
       </div>
 
       {/* Stats row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 12, marginBottom: 24 }}>
-        <StatCard label="Total Unpaid" value={fmt(stats.totalUnpaid)} accent="#e07b3f" />
-        <StatCard label="Due This Month" value={fmt(stats.dueThisMonth)} accent="#d4a017" />
-        <StatCard label="Paid This Month" value={fmt(stats.paidThisMonth)} sub="bills dated this month" accent="var(--teal)" />
-        <StatCard label="Total Paid (All Time)" value={fmt(stats.totalPaid)} />
-        <StatCard label="Disputed" value={fmt(stats.disputed)} accent="#c0556a" />
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12, marginBottom: 24 }}>
+        <StatCard label="Total Unpaid"       value={fmt(stats.totalUnpaid)}    accentColor="#dc2626" />
+        <StatCard label="Due This Month"     value={fmt(stats.dueThisMonth)}   accentColor="#1d4ed8" />
+        <StatCard label="Paid This Month"    value={fmt(stats.paidThisMonth)}  sub="bills dated this month" accentColor="#16a34a" />
+        <StatCard label="Total Paid"         value={fmt(stats.totalPaid)}      accentColor="#6b7280" />
+        <StatCard label="Disputed"           value={fmt(stats.disputed)}       accentColor="#a16207" />
       </div>
 
-      {/* Vendor selector */}
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
-        <button
-          onClick={() => setSelectedVendor('ALL')}
-          style={{ ...btnGhost, ...(selectedVendor === 'ALL' ? { borderColor: 'var(--teal)', color: 'var(--teal)', background: 'rgba(45,138,138,.08)' } : {}) }}
-        >
-          All Vendors
-        </button>
-        {vendors.map(v => (
-          <button
-            key={v.id}
-            onClick={() => setSelectedVendor(v.id)}
-            style={{ ...btnGhost, ...(selectedVendor === v.id ? { borderColor: 'var(--teal)', color: 'var(--teal)', background: 'rgba(45,138,138,.08)' } : {}) }}
-          >
-            {v.name}
-          </button>
-        ))}
+      {/* Vendor tabs */}
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 16 }}>
+        {[{ id: 'ALL', name: 'All Vendors' }, ...vendors].map(v => {
+          const active = selectedVendor === v.id;
+          return (
+            <button
+              key={v.id}
+              onClick={() => setSelectedVendor(v.id)}
+              style={{
+                background: active ? '#0d9488' : '#ffffff',
+                color: active ? '#ffffff' : '#374151',
+                border: active ? '1px solid #0d9488' : '1px solid #d1d5db',
+                borderRadius: 20,
+                padding: '6px 14px',
+                fontWeight: active ? 600 : 500,
+                fontSize: 13,
+                cursor: 'pointer',
+              }}
+            >
+              {v.name}
+            </button>
+          );
+        })}
       </div>
 
       {/* Vendor summary bar */}
       {selectedVendor !== 'ALL' && (
-        <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 20px', marginBottom: 16, display: 'flex', gap: 32, flexWrap: 'wrap' }}>
-          <div><span style={{ fontSize: 11, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.5px' }}>Outstanding</span><div style={{ fontWeight: 700, color: '#e07b3f' }}>{fmt(vendorStats.unpaid)}</div></div>
-          <div><span style={{ fontSize: 11, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.5px' }}>Total Paid</span><div style={{ fontWeight: 700, color: 'var(--teal)' }}>{fmt(vendorStats.paid)}</div></div>
-          <div><span style={{ fontSize: 11, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.5px' }}>Bills</span><div style={{ fontWeight: 700 }}>{bills.filter(b => b.vendor_id === selectedVendor).length}</div></div>
+        <div style={{
+          background: '#ffffff', border: '1px solid #e5e7eb', borderRadius: 10,
+          padding: '14px 20px', marginBottom: 16, display: 'flex', gap: 36, flexWrap: 'wrap',
+          boxShadow: '0 1px 2px rgba(0,0,0,.04)',
+        }}>
+          <div>
+            <div style={{ fontSize: 10, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.5px', fontWeight: 600, marginBottom: 2 }}>Outstanding</div>
+            <div style={{ fontWeight: 700, color: '#dc2626', fontSize: 16 }}>{fmt(vendorStats.unpaid)}</div>
+          </div>
+          <div>
+            <div style={{ fontSize: 10, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.5px', fontWeight: 600, marginBottom: 2 }}>Total Paid</div>
+            <div style={{ fontWeight: 700, color: '#16a34a', fontSize: 16 }}>{fmt(vendorStats.paid)}</div>
+          </div>
+          <div>
+            <div style={{ fontSize: 10, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.5px', fontWeight: 600, marginBottom: 2 }}>Bills</div>
+            <div style={{ fontWeight: 700, color: '#111827', fontSize: 16 }}>{bills.filter(b => b.vendor_id === selectedVendor).length}</div>
+          </div>
         </div>
       )}
 
-      {/* Filters row */}
-      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 16, alignItems: 'center' }}>
+      {/* Filters */}
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 14, alignItems: 'center' }}>
         <input
           value={search}
           onChange={e => setSearch(e.target.value)}
@@ -356,49 +431,80 @@ export default function VendorTracker() {
           <option value="ALL">All Statuses</option>
           {STATUSES.map(s => <option key={s} value={s}>{STATUS_META[s].label}</option>)}
         </select>
-        <span style={{ fontSize: 12, color: 'var(--muted)', marginLeft: 4 }}>{filtered.length} bills</span>
+        <span style={{ fontSize: 12, color: '#9ca3af' }}>{filtered.length} bills</span>
       </div>
 
       {/* Table */}
-      <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
+      <div style={{
+        background: '#ffffff',
+        border: '1px solid #e5e7eb',
+        borderRadius: 10,
+        overflow: 'hidden',
+        boxShadow: '0 1px 3px rgba(0,0,0,.06)',
+      }}>
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
             <thead>
-              <tr style={{ borderBottom: '1px solid var(--border)', background: 'rgba(0,0,0,.12)' }}>
+              <tr style={{ background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
                 {['Vendor', 'Date', 'Invoice', 'Items', 'Amount', 'Status', ''].map(h => (
-                  <th key={h} style={{ padding: '10px 14px', textAlign: 'left', fontWeight: 600, fontSize: 11, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.5px', whiteSpace: 'nowrap' }}>{h}</th>
+                  <th key={h} style={{
+                    padding: '10px 14px', textAlign: 'left', fontWeight: 600,
+                    fontSize: 11, color: '#6b7280', textTransform: 'uppercase',
+                    letterSpacing: '.5px', whiteSpace: 'nowrap',
+                  }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {filtered.length === 0 && (
-                <tr><td colSpan={7} style={{ padding: '32px 14px', textAlign: 'center', color: 'var(--muted)' }}>No bills found.</td></tr>
+                <tr>
+                  <td colSpan={7} style={{ padding: '40px 14px', textAlign: 'center', color: '#9ca3af' }}>
+                    No bills found.
+                  </td>
+                </tr>
               )}
               {filtered.map((b, i) => (
-                <tr key={b.id} style={{ borderBottom: '1px solid var(--border)', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,.018)' }}>
-                  <td style={{ padding: '10px 14px', fontWeight: 500, whiteSpace: 'nowrap' }}>{vendorMap[b.vendor_id] || '—'}</td>
-                  <td style={{ padding: '10px 14px', color: 'var(--muted)', whiteSpace: 'nowrap' }}>{formatDate(b.bill_date)}</td>
-                  <td style={{ padding: '10px 14px', color: 'var(--muted)', whiteSpace: 'nowrap', fontSize: 11 }}>{b.invoice_id || '—'}</td>
-                  <td style={{ padding: '10px 14px', maxWidth: 260 }}>
-                    <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={b.items}>{b.items}</div>
-                    {b.notes && <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>{b.notes}</div>}
+                <tr
+                  key={b.id}
+                  style={{
+                    borderBottom: '1px solid #f3f4f6',
+                    background: i % 2 === 0 ? '#ffffff' : '#fafafa',
+                  }}
+                >
+                  <td style={{ padding: '10px 14px', fontWeight: 600, whiteSpace: 'nowrap', color: '#111827' }}>
+                    {vendorMap[b.vendor_id] || '—'}
                   </td>
-                  <td style={{ padding: '10px 14px', fontWeight: 600, whiteSpace: 'nowrap' }}>{fmt(b.amount)}</td>
-                  <td style={{ padding: '10px 14px' }}><StatusBadge status={b.status} /></td>
-                  <td style={{ padding: '10px 14px' }}>
-                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                      {b.status !== 'PAID' && (
-                        <button onClick={() => quickStatus(b, 'PAID')} style={{ ...btnGhost, padding: '3px 8px', fontSize: 11, borderColor: 'var(--teal)', color: 'var(--teal)' }}>✓ Paid</button>
-                      )}
-                      {b.status !== 'DUE_THIS_MONTH' && b.status !== 'PAID' && (
-                        <button onClick={() => quickStatus(b, 'DUE_THIS_MONTH')} style={{ ...btnGhost, padding: '3px 8px', fontSize: 11, borderColor: '#d4a017', color: '#d4a017' }}>Due</button>
-                      )}
-                      {b.status !== 'DISPUTED' && (
-                        <button onClick={() => quickStatus(b, 'DISPUTED')} style={{ ...btnGhost, padding: '3px 8px', fontSize: 11, borderColor: '#c0556a', color: '#c0556a' }}>Dispute</button>
-                      )}
-                      <button onClick={() => { setEditingBill(b); setShowBillModal(true); }} style={{ ...btnGhost, padding: '3px 8px', fontSize: 11 }}>Edit</button>
-                      <button onClick={() => deleteBill(b)} style={{ ...btnGhost, padding: '3px 8px', fontSize: 11, borderColor: '#c0556a', color: '#c0556a' }}>Del</button>
+                  <td style={{ padding: '10px 14px', color: '#6b7280', whiteSpace: 'nowrap' }}>
+                    {formatDate(b.bill_date)}
+                  </td>
+                  <td style={{ padding: '10px 14px', color: '#9ca3af', whiteSpace: 'nowrap', fontSize: 11 }}>
+                    {b.invoice_id || '—'}
+                  </td>
+                  <td style={{ padding: '10px 14px', maxWidth: 260 }}>
+                    <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: '#374151' }} title={b.items}>
+                      {b.items}
                     </div>
+                    {b.notes && (
+                      <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>{b.notes}</div>
+                    )}
+                  </td>
+                  <td style={{ padding: '10px 14px', fontWeight: 700, whiteSpace: 'nowrap', color: '#111827' }}>
+                    {fmt(b.amount)}
+                  </td>
+                  <td style={{ padding: '10px 14px' }}>
+                    <StatusBadge status={b.status} />
+                  </td>
+                  <td style={{ padding: '10px 14px' }}>
+                    <button
+                      onClick={() => { setEditingBill(b); setShowBillModal(true); }}
+                      style={{
+                        background: '#f9fafb', color: '#374151',
+                        border: '1px solid #d1d5db', borderRadius: 6,
+                        padding: '4px 12px', fontSize: 12, fontWeight: 500, cursor: 'pointer',
+                      }}
+                    >
+                      Edit
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -415,6 +521,7 @@ export default function VendorTracker() {
           selectedVendorId={selectedVendor !== 'ALL' ? selectedVendor : undefined}
           onClose={() => { setShowBillModal(false); setEditingBill(null); }}
           onSaved={afterSave}
+          onDeleted={afterDelete}
         />
       )}
       {showVendorModal && (
