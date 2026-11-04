@@ -15,6 +15,7 @@ import CircleMembers from './pages/circle/CircleMembers';
 import CircleMemberProfile from './pages/circle/CircleMemberProfile';
 import CircleServiceLog from './pages/circle/CircleServiceLog';
 import CircleAnalytics from './pages/circle/CircleAnalytics';
+import VendorTracker from './pages/VendorTracker';
 
 const NAV = [
   { to: '/hub', label: 'Hub', icon: <path d="M5 20v-7M12 20V4M19 20v-11" /> },
@@ -22,6 +23,7 @@ const NAV = [
   { to: '/appointments', label: 'Appointments', icon: <><rect x="4" y="5" width="16" height="16" rx="2" /><path d="M8 3v4M16 3v4M4 10h16" /></> },
   { to: '/expenses', label: 'Expenses', icon: <><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z" /><path d="M9 8h6M9 12h6" /></> },
   { to: '/circle', label: 'Circle', icon: <circle cx="12" cy="12" r="8" /> },
+  { to: '/vendors', label: 'Vendors', icon: <><path d="M3 9h18M3 15h18M9 3v18M15 3v18" /><rect x="3" y="3" width="18" height="18" rx="2" /></> },
 ];
 
 async function signOut() {
@@ -78,6 +80,7 @@ export default function App() {
             <Route path="log" element={<CircleServiceLog />} />
             <Route path="analytics" element={<CircleAnalytics />} />
           </Route>
+          <Route path="/vendors" element={<VendorTracker />} />
           <Route path="*" element={<Navigate to="/hub" replace />} />
         </Routes>
       </main>
