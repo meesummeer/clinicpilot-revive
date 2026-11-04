@@ -28,7 +28,7 @@ jobs:
       - run: npm ci
       - run: npm run build
         env:
-          VITE_BASE_PATH: ${{ vars.VITE_BASE_PATH }}
+          VITE_BASE_PATH: ${{ vars.VITE_BASE_PATH || '/' }}
 
       # GitHub Pages has no SPA fallback, so a refresh on /clinicpilot-revive/patients
       # would 404 without this. Pages serves 404.html for unmatched paths while
