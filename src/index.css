@@ -285,6 +285,7 @@ code { font-family: var(--mono); font-size: 13px; color: var(--accent); }
   .nav { flex-direction: row; overflow-x: auto; margin: 0 -16px; padding: 0 16px 4px; scrollbar-width: none; }
   .nav a, .nav button { width: auto; padding: 7px 10px; font-size: 14px; }
   .nav svg { display: none; }
+  .sidebar .nav .nav-sep { margin-top: 0; }
   .sidebar-foot { display: none; }
   .main { max-width: none; padding: 26px 24px 50px; }
 }
