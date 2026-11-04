@@ -9,9 +9,10 @@ Admin tools for Revive House of Dermatology & Healthcare, Karachi. Plain HTML pa
 ## Setup
 
 1. In the Supabase SQL Editor, run `schema.sql`.
-2. In `circle.html`, replace `YOUR_SUPABASE_URL` and `YOUR_SUPABASE_ANON_KEY`.
-3. Push to `main`. GitHub Pages publishes from the repo root.
+2. In `circle.html`, set `SUPABASE_URL` and `SUPABASE_ANON_KEY` (the publishable key, never a secret key).
+3. In Supabase Auth, turn off "Allow new users to sign up".
+4. Push to `main`. GitHub Pages publishes from the repo root.
 
-## Access
+## Staff access
 
-There is no login. The anon key is visible in the page source, so anyone who finds it can read and change member data. Add authentication and tighten the policies in `schema.sql` before relying on this for real member records.
+Staff sign in with email and password. There is no self sign-up or password reset in the app: add users and set passwords in Supabase under Authentication → Users. Every signed-in user can read and change all Circle data.

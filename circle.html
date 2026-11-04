@@ -236,6 +236,10 @@ dialog.narrow { width: min(430px, calc(100vw - 32px)); }
 .dlg-foot { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
 .toast { position: fixed; z-index: 100; left: 50%; bottom: 24px; transform: translateX(-50%); max-width: calc(100vw - 32px); padding: 10px 16px; border-radius: 8px; background: #0f2c2b; border: 1px solid var(--accent); font-weight: 500; box-shadow: 0 10px 30px rgba(0,0,0,.5); }
 .toast.error { background: #321719; border-color: var(--red); }
+.auth-screen { min-height: 100vh; display: grid; place-items: center; padding: 24px 16px; }
+.auth-card { width: min(380px, 100%); background: var(--surface); border: 1px solid var(--line-strong); border-radius: 14px; padding: 28px 26px; display: grid; gap: 15px; animation: rise .35s ease both; }
+.auth-brand { display: flex; align-items: center; gap: 11px; margin-bottom: 6px; }
+.auth-card .btn { width: 100%; padding: 10px 14px; }
 .setup ol { margin: 12px 0 0; padding-left: 20px; display: grid; gap: 7px; }
 code { font-family: var(--mono); font-size: 13px; color: var(--accent); }
 
@@ -267,7 +271,21 @@ code { font-family: var(--mono); font-size: 13px; color: var(--accent); }
 </style>
 </head>
 <body>
-<div class="shell">
+<div class="auth-screen" id="authScreen" hidden>
+  <form class="auth-card" id="loginForm" novalidate>
+    <div class="auth-brand">
+      <span class="brand-ring" aria-hidden="true"></span>
+      <span><span class="brand-name">ClinicPilot Revive</span><span class="brand-sub">Circle membership</span></span>
+    </div>
+    <h1 class="dlg-title" style="margin:0">Sign in</h1>
+    <div class="field"><label for="loginEmail">Email</label><input class="input" id="loginEmail" type="email" autocomplete="username" required></div>
+    <div class="field"><label for="loginPassword">Password</label><input class="input" id="loginPassword" type="password" autocomplete="current-password" required></div>
+    <p class="form-error" id="loginError" role="alert" hidden></p>
+    <button class="btn btn-primary" id="loginSubmit" type="submit">Sign in</button>
+    <p class="hint">Need access or forgot your password? Ask your clinic admin.</p>
+  </form>
+</div>
+<div class="shell" id="shell" hidden>
   <aside class="sidebar">
     <a class="brand" href="#/home">
       <span class="brand-ring" aria-hidden="true"></span>
@@ -279,9 +297,11 @@ code { font-family: var(--mono); font-size: 13px; color: var(--accent); }
       <button type="button" data-action="add-member"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>Add Member</button>
       <a href="#/log" data-nav="log"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4h6v3H9z"/><path d="M9 5H6v16h12V5h-3"/><path d="M9 12h6M9 16h6"/></svg>Service Log</a>
       <a href="#/analytics" data-nav="analytics"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 20v-7M12 20V4M19 20v-11"/></svg>Analytics</a>
+      <button type="button" data-action="sign-out"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 4H5v16h5"/><path d="M14 8l4 4-4 4M18 12H9"/></svg>Sign out</button>
     </nav>
     <div class="sidebar-foot">
       <button type="button" class="btn btn-sm" data-action="refresh">Refresh data</button>
+      <span id="whoami" style="overflow-wrap:anywhere"></span>
       <span>Revive House of Dermatology &amp; Healthcare, Karachi</span>
     </div>
   </aside>
@@ -333,6 +353,7 @@ const configured = !SUPABASE_URL.startsWith('YOUR_') && !SUPABASE_ANON_KEY.start
 const db = configured ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
 const state = {
+  userId: undefined, // undefined until Supabase reports the session; null when signed out
   members: [], logs: [], loaded: false, loadError: null,
   filters: { q: '', plan: '', status: '' },
   logMemberId: null,
@@ -424,6 +445,7 @@ async function fetchAll(table) {
 }
 async function loadAll() {
   const [members, logs] = await Promise.all([fetchAll('members'), fetchAll('service_log')]);
+  if (!state.userId) return; // signed out while this was loading
   state.members = members.sort((a, b) => cardNum(a) - cardNum(b));
   state.logs = logs;
   state.loaded = true;
@@ -445,6 +467,7 @@ function route() {
   return { page: page || 'home', id: id ? decodeURIComponent(id) : null };
 }
 function render() {
+  if (configured && !state.userId) return;
   const { page, id } = route();
   const active = page === 'member' ? 'members' : page;
   document.querySelectorAll('[data-nav]').forEach(a => {
@@ -944,6 +967,7 @@ const actions = {
     renderLogDynamic();
     document.getElementById('logSearch').focus();
   },
+  'sign-out': () => db.auth.signOut({ scope: 'local' }),
   refresh: async el => {
     if (!configured) return;
     el.disabled = true;
@@ -961,8 +985,48 @@ document.addEventListener('click', e => {
 });
 
 /* ─── Start ──────────────────────────────────────────────────── */
-render();
-if (configured) refresh();
+function applySession(session) {
+  const userId = session?.user?.id ?? null;
+  if (userId === state.userId) return; // token refreshes and tab refocus aren't new sign-ins
+  state.userId = userId;
+  document.getElementById('authScreen').hidden = !!userId;
+  document.getElementById('shell').hidden = !userId;
+  if (userId) {
+    document.getElementById('whoami').textContent = session.user.email || '';
+    render();
+    refresh();
+    return;
+  }
+  // Signed out: leave no member data on screen or in memory.
+  document.title = 'Sign in — Circle';
+  [memberDialog, confirmDialogEl].forEach(d => { if (d.open) d.close(); });
+  view.innerHTML = '';
+  document.getElementById('toast').hidden = true;
+  Object.assign(state, { members: [], logs: [], loaded: false, loadError: null, logMemberId: null, filters: { q: '', plan: '', status: '' } });
+  try { localStorage.removeItem('cp_logged_by'); } catch { /* optional convenience */ }
+  document.getElementById('loginEmail').focus();
+}
+document.getElementById('loginForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const $ = i => document.getElementById(i);
+  const fail = msg => { $('loginError').textContent = msg; $('loginError').hidden = false; };
+  $('loginError').hidden = true;
+  const email = $('loginEmail').value.trim(), password = $('loginPassword').value;
+  if (!email || !password) return fail('Enter your email and password.');
+  $('loginSubmit').disabled = true;
+  const { error } = await db.auth.signInWithPassword({ email, password });
+  $('loginSubmit').disabled = false;
+  $('loginPassword').value = '';
+  if (error) fail(error.code === 'invalid_credentials' ? 'Incorrect email or password.' : `Couldn't sign in: ${error.message}`);
+});
+
+if (configured) {
+  // Deferred because Supabase calls made directly inside this callback can deadlock.
+  db.auth.onAuthStateChange((_event, session) => setTimeout(() => applySession(session), 0));
+} else {
+  document.getElementById('shell').hidden = false;
+  render();
+}
 </script>
 </body>
 </html>

@@ -27,16 +27,16 @@ CREATE TABLE service_log (
 CREATE UNIQUE INDEX members_card_number_key ON members (card_number);
 CREATE INDEX service_log_member_id_idx ON service_log (member_id);
 
--- Row Level Security, with open access for the anon key while there is no login.
--- IMPORTANT: this means anyone who has the anon key can read and change all data,
--- and the key is visible in the page source. Replace these policies with
--- authenticated-only ones when a login is added.
+-- Only signed-in staff can read or change data. The public key alone gets nothing.
+-- Keep "Allow new users to sign up" turned off in Supabase Auth, otherwise anyone
+-- could create an account and pass these rules.
 ALTER TABLE members ENABLE ROW LEVEL SECURITY;
 ALTER TABLE service_log ENABLE ROW LEVEL SECURITY;
 
-GRANT SELECT, INSERT, UPDATE, DELETE ON members, service_log TO anon;
+REVOKE ALL ON members, service_log FROM anon;
+GRANT SELECT, INSERT, UPDATE, DELETE ON members, service_log TO authenticated;
 
-CREATE POLICY "anon full access" ON members
-  FOR ALL TO anon USING (true) WITH CHECK (true);
-CREATE POLICY "anon full access" ON service_log
-  FOR ALL TO anon USING (true) WITH CHECK (true);
+CREATE POLICY "staff full access" ON members
+  FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "staff full access" ON service_log
+  FOR ALL TO authenticated USING (true) WITH CHECK (true);
