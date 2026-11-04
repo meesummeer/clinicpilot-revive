@@ -30,6 +30,24 @@ function StatusBadge({ status }) {
 
 function fmt(n) { return 'Rs ' + (Number(n) || 0).toLocaleString('en-PK', { maximumFractionDigits: 0 }); }
 
+// Parse "Check No.: 1234" out of notes, return { checkNo, otherNotes }
+function parseNotes(notes) {
+  if (!notes) return { checkNo: '', otherNotes: '' };
+  const m = notes.match(/^Check No\.\s*:\s*(\S+)([\s\S]*)$/i);
+  if (m) return { checkNo: m[1].trim(), otherNotes: m[2].trim() };
+  // check no. might be embedded elsewhere
+  const m2 = notes.match(/Check No\.\s*:\s*(\S+)/i);
+  if (m2) return { checkNo: m2[1].trim(), otherNotes: notes.replace(m2[0], '').trim() };
+  return { checkNo: '', otherNotes: notes.trim() };
+}
+
+function buildNotes(checkNo, otherNotes) {
+  const parts = [];
+  if (checkNo.trim()) parts.push(`Check No.: ${checkNo.trim()}`);
+  if (otherNotes.trim()) parts.push(otherNotes.trim());
+  return parts.join(' · ') || null;
+}
+
 // ── stat card ─────────────────────────────────────────────────────────────────
 
 function StatCard({ label, value, sub, accentColor }) {
@@ -59,7 +77,9 @@ function BillModal({ bill, vendors, selectedVendorId, onClose, onSaved, onDelete
   const [items, setItems] = useState(bill?.items || '');
   const [amount, setAmount] = useState(bill?.amount != null ? String(bill.amount) : '');
   const [status, setStatus] = useState(bill?.status || 'UNPAID');
-  const [notes, setNotes] = useState(bill?.notes || '');
+  const { checkNo: initCheckNo, otherNotes: initOtherNotes } = parseNotes(bill?.notes || '');
+  const [checkNo, setCheckNo] = useState(initCheckNo);
+  const [otherNotes, setOtherNotes] = useState(initOtherNotes);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [err, setErr] = useState('');
@@ -74,7 +94,7 @@ function BillModal({ bill, vendors, selectedVendorId, onClose, onSaved, onDelete
     const payload = {
       vendor_id: vendorId, invoice_id: invoiceId.trim() || null,
       bill_date: billDate, items: items.trim(),
-      amount: amt, status, notes: notes.trim() || null,
+      amount: amt, status, notes: buildNotes(checkNo, otherNotes),
     };
     const { error } = isEdit
       ? await supabase.from('vendor_bills').update(payload).eq('id', bill.id)
@@ -152,9 +172,25 @@ function BillModal({ bill, vendors, selectedVendorId, onClose, onSaved, onDelete
             </select>
           </div>
         </div>
-        <div>
-          <label style={lbl}>Notes</label>
-          <input style={inp} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Check no., payment ref, etc." />
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <div>
+            <label style={lbl}>Check No.</label>
+            <input
+              style={inp}
+              value={checkNo}
+              onChange={e => setCheckNo(e.target.value)}
+              placeholder="e.g. 1668"
+            />
+          </div>
+          <div>
+            <label style={lbl}>Other Notes</label>
+            <input
+              style={inp}
+              value={otherNotes}
+              onChange={e => setOtherNotes(e.target.value)}
+              placeholder="Payment ref, etc."
+            />
+          </div>
         </div>
         {err && <p style={{ color: '#dc2626', fontSize: 12, margin: 0 }}>{err}</p>}
         <button type="submit" disabled={saving} style={{
@@ -484,9 +520,24 @@ export default function VendorTracker() {
                     <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: '#374151' }} title={b.items}>
                       {b.items}
                     </div>
-                    {b.notes && (
-                      <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>{b.notes}</div>
-                    )}
+                    {(() => {
+                      const { checkNo: cn, otherNotes: on } = parseNotes(b.notes);
+                      return (
+                        <>
+                          {cn && (
+                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 3 }}>
+                              <span style={{
+                                fontSize: 10, fontWeight: 700, letterSpacing: '.4px',
+                                color: '#0d9488', background: 'rgba(13,148,136,.08)',
+                                border: '1px solid rgba(13,148,136,.2)',
+                                borderRadius: 4, padding: '1px 6px',
+                              }}>CHK {cn}</span>
+                            </div>
+                          )}
+                          {on && <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>{on}</div>}
+                        </>
+                      );
+                    })()}
                   </td>
                   <td style={{ padding: '10px 14px', fontWeight: 700, whiteSpace: 'nowrap', color: '#111827' }}>
                     {fmt(b.amount)}
