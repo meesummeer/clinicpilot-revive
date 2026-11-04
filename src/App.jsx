@@ -42,8 +42,8 @@ export default function App() {
     <div className="shell">
       <aside className="sidebar">
         <NavLink className="brand" to="/hub">
-          <span className="brand-ring" aria-hidden="true" />
-          <span><span className="brand-name">ClinicPilot</span><span className="brand-sub">Revive House</span></span>
+          <img className="brand-logo" src={`${import.meta.env.BASE_URL}revive-logo.png`} alt="Revive House of Dermatology & Health Care" />
+          <span><span className="brand-name">ClinicPilot</span><span className="brand-sub">Revive</span></span>
         </NavLink>
         <nav className="nav" aria-label="Main">
           {NAV.map((n) => (

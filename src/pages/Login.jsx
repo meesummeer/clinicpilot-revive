@@ -26,8 +26,8 @@ export default function Login() {
     <div className="auth-screen">
       <form className="auth-card" onSubmit={handleLogin} noValidate>
         <div className="auth-brand">
-          <span className="brand-ring" aria-hidden="true" />
-          <span><span className="brand-name">ClinicPilot</span><span className="brand-sub">Revive House</span></span>
+          <img className="brand-logo" src={`${import.meta.env.BASE_URL}revive-logo.png`} alt="Revive House of Dermatology & Health Care" />
+          <span><span className="brand-name">ClinicPilot</span><span className="brand-sub">Revive</span></span>
         </div>
         <h1 className="dlg-title" style={{ margin: 0 }}>Sign in</h1>
         <div className="field"><label htmlFor="loginEmail">Email</label><input className="input" id="loginEmail" type="email" autoComplete="username" autoFocus value={email} onChange={(e) => setEmail(e.target.value)} /></div>
