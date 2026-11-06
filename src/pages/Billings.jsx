@@ -596,9 +596,7 @@ export default function Billings({ isRestricted = false }) {
           <h1 className="page-title">Billings</h1>
           <p className="page-sub">Invoices &amp; payment records</p>
         </div>
-        {!isRestricted && (
-          <button className="btn btn-primary" onClick={() => setShowForm(true)}>+ New Entry</button>
-        )}
+        <button className="btn btn-primary" onClick={() => setShowForm(true)}>+ New Entry</button>
       </div>
 
       {/* Stats tiles */}
