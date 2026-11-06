@@ -40,17 +40,17 @@ export default function CircleLayout({ session }) {
   return (
     <>
       <div className="page-head">
-        <div><h1 className="page-title">Circle</h1><p className="page-sub">Revive Circle membership</p></div>
+        <div><h1 className="page-title">Prestige</h1><p className="page-sub">Revive Prestige membership</p></div>
         <div className="mc-actions">
           <button type="button" className="btn" onClick={async () => { await reload(); toast('Data refreshed.'); }}>Refresh</button>
           <button type="button" className="btn btn-primary" onClick={() => setMemberForm('new')}>+ Add member</button>
         </div>
       </div>
-      <nav className="subnav" aria-label="Circle">
-        <NavLink to="/circle" end className={tabClass}>Overview</NavLink>
-        <NavLink to="/circle/members" className={tabClass}>Members</NavLink>
-        <NavLink to="/circle/log" className={tabClass}>Service Log</NavLink>
-        <NavLink to="/circle/analytics" className={tabClass}>Analytics</NavLink>
+      <nav className="subnav" aria-label="Prestige">
+        <NavLink to="/prestige" end className={tabClass}>Overview</NavLink>
+        <NavLink to="/prestige/members" className={tabClass}>Members</NavLink>
+        <NavLink to="/prestige/log" className={tabClass}>Service Log</NavLink>
+        <NavLink to="/prestige/analytics" className={tabClass}>Analytics</NavLink>
       </nav>
       {error && <p className="form-error" role="alert" style={{ marginBottom: 12 }}>Couldn't load Circle data: {error}</p>}
       {loaded ? <Outlet context={context} /> : <div className="empty">Loading…</div>}
@@ -62,7 +62,7 @@ export default function CircleLayout({ session }) {
           onSaved={(saved, isNew) => {
             setMemberForm(null);
             toast(isNew ? `Added ${saved.name} as ${saved.card_number}.` : 'Member updated.');
-            if (isNew) navigate(`/circle/members/${saved.id}`);
+            if (isNew) navigate(`/prestige/members/${saved.id}`);
           }}
         />
       )}

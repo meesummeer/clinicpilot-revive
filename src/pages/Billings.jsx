@@ -1,9 +1,30 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { supabase, fetchAllRows } from '../lib/supabaseClient';
-import { formatDate, formatMoney, todayKarachi, toWhatsAppNumber } from '../lib/format';
+import { formatDate, formatMoney, todayKarachi, ymdKarachi, toWhatsAppNumber } from '../lib/format';
 import Modal from '../components/Modal';
 import PatientForm from '../components/PatientForm';
 import { toast } from '../components/Toast';
+
+// ─── date shortcut helpers ────────────────────────────────────────────────────
+function yesterdayKarachi() {
+  const d = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Karachi' }));
+  d.setDate(d.getDate() - 1);
+  return ymdKarachi(d);
+}
+function startOfLastMonthKarachi() {
+  const today = todayKarachi();
+  const [y, m] = today.split('-').map(Number);
+  const lm = m === 1 ? 12 : m - 1;
+  const ly = m === 1 ? y - 1 : y;
+  return `${ly}-${String(lm).padStart(2, '0')}-01`;
+}
+function sameDayLastMonthKarachi() {
+  const today = todayKarachi();
+  const [y, m, d] = today.split('-').map(Number);
+  const lm = m === 1 ? 12 : m - 1;
+  const ly = m === 1 ? y - 1 : y;
+  return `${ly}-${String(lm).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+}
 
 // ─── constants ───────────────────────────────────────────────────────────────
 const PAYMENT_MODES = ['Cash', 'Bank Transfer', 'Debit/Credit Card', 'GIA International', 'Habib Insurance', 'Cheque', 'Other'];
@@ -483,7 +504,7 @@ function InvoiceModal({ bill, logoSrc, onClose }) {
 }
 
 // ─── Main Billings page ───────────────────────────────────────────────────────
-export default function Billings() {
+export default function Billings({ isRestricted = false }) {
   const [bills, setBills] = useState([]);
   const [patients, setPatients] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -575,7 +596,9 @@ export default function Billings() {
           <h1 className="page-title">Billings</h1>
           <p className="page-sub">Invoices &amp; payment records</p>
         </div>
-        <button className="btn btn-primary" onClick={() => setShowForm(true)}>+ New Entry</button>
+        {!isRestricted && (
+          <button className="btn btn-primary" onClick={() => setShowForm(true)}>+ New Entry</button>
+        )}
       </div>
 
       {/* Stats tiles */}
@@ -596,10 +619,29 @@ export default function Billings() {
       </div>
 
       {/* Filters */}
-      <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: 10, marginBottom: 8, flexWrap: 'wrap', alignItems: 'center' }}>
         <input className="input" style={{ flex: 1, minWidth: 200 }} placeholder="Search patient, phone, invoice #…" value={search} onChange={(e) => setSearch(e.target.value)} />
-        <input className="input" type="date" value={filterDate} onChange={(e) => setFilterDate(e.target.value)} />
-        {filterDate && <button className="btn btn-sm" onClick={() => setFilterDate('')}>Clear date</button>}
+        <input className="input" type="date" value={filterDate} onChange={(e) => setFilterDate(e.target.value)} style={{ width: 150 }} />
+        {filterDate && <button className="btn btn-sm" onClick={() => setFilterDate('')}>✕ Clear</button>}
+      </div>
+      {/* Date shortcuts */}
+      <div style={{ display: 'flex', gap: 6, marginBottom: 16, flexWrap: 'wrap' }}>
+        {[
+          { label: 'Today',              value: todayKarachi() },
+          { label: 'Yesterday',          value: yesterdayKarachi() },
+          { label: 'Last Month Start',   value: startOfLastMonthKarachi() },
+          { label: 'Same Day Last Month',value: sameDayLastMonthKarachi() },
+        ].map((s) => (
+          <button
+            key={s.label}
+            type="button"
+            className="btn btn-sm"
+            style={filterDate === s.value ? { background: 'var(--accent)', color: '#fff', borderColor: 'var(--accent)' } : {}}
+            onClick={() => setFilterDate(filterDate === s.value ? '' : s.value)}
+          >
+            {s.label}
+          </button>
+        ))}
       </div>
 
       {/* Table */}
@@ -650,8 +692,8 @@ export default function Billings() {
                   <td>
                     <div style={{ display: 'flex', gap: 6 }}>
                       <button className="btn btn-sm" onClick={() => setViewBill(b)}>Invoice</button>
-                      <button className="btn btn-sm" onClick={() => { setEditBill(b); setShowForm(false); }}>Edit</button>
-                      <button className="btn btn-sm" style={{ color: '#dc2626' }} onClick={() => deleteBill(b)}>Delete</button>
+                      {!isRestricted && <button className="btn btn-sm" onClick={() => { setEditBill(b); setShowForm(false); }}>Edit</button>}
+                      {!isRestricted && <button className="btn btn-sm" style={{ color: '#dc2626' }} onClick={() => deleteBill(b)}>Delete</button>}
                     </div>
                   </td>
                 </tr>

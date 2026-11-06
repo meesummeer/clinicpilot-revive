@@ -16,7 +16,7 @@ export default function CircleMemberProfile() {
 
   useEffect(() => { if (m) document.title = `${m.name} — Circle`; }, [m]);
 
-  if (!m) return <><Link className="back" to="/circle/members">← Members</Link><div className="panel empty">This member doesn't exist or has been deleted.</div></>;
+  if (!m) return <><Link className="back" to="/prestige/members">← Members</Link><div className="panel empty">This member doesn't exist or has been deleted.</div></>;
 
   const entries = logs.filter((l) => l.member_id === m.id).sort(byDateDesc);
 
@@ -27,7 +27,7 @@ export default function CircleMemberProfile() {
     if (error) { toast(`Couldn't delete: ${error.message}`, true); return; }
     toast(`${m.name} deleted.`);
     await reload();
-    navigate('/circle/members');
+    navigate('/prestige/members');
   }
 
   let termPct = 0, termNote = '';
@@ -40,7 +40,7 @@ export default function CircleMemberProfile() {
 
   return (
     <>
-      <Link className="back" to="/circle/members">← Members</Link>
+      <Link className="back" to="/prestige/members">← Members</Link>
       <section className="member-card">
         <div className="mc-top">
           <div>
@@ -48,7 +48,7 @@ export default function CircleMemberProfile() {
             <div className="mc-tags"><Chip member={m} /> <StatusBadge member={m} /></div>
           </div>
           <div className="mc-actions">
-            <Link className="btn btn-primary" to={`/circle/log?member=${m.id}`}>Log service</Link>
+            <Link className="btn btn-primary" to={`/prestige/log?member=${m.id}`}>Log service</Link>
             <button type="button" className="btn" onClick={() => openEditMember(m)}>Edit</button>
             <button type="button" className="btn btn-danger" onClick={handleDelete}>Delete</button>
           </div>

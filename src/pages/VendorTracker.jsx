@@ -259,7 +259,7 @@ function VendorModal({ onClose, onSaved }) {
 
 // ── main page ────────────────────────────────────────────────────────────────
 
-export default function VendorTracker() {
+export default function VendorTracker({ isRestricted = false }) {
   const [vendors, setVendors] = useState([]);
   const [bills, setBills] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -395,7 +395,9 @@ export default function VendorTracker() {
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <button style={btnOutline} onClick={() => setShowVendorModal(true)}>+ Add Vendor</button>
-          <button style={btnPrimary} onClick={() => { setEditingBill(null); setShowBillModal(true); }}>+ Add Bill</button>
+          {!isRestricted && (
+            <button style={btnPrimary} onClick={() => { setEditingBill(null); setShowBillModal(true); }}>+ Add Bill</button>
+          )}
         </div>
       </div>
 
@@ -546,16 +548,18 @@ export default function VendorTracker() {
                     <StatusBadge status={b.status} />
                   </td>
                   <td style={{ padding: '10px 14px' }}>
-                    <button
-                      onClick={() => { setEditingBill(b); setShowBillModal(true); }}
-                      style={{
-                        background: '#f9fafb', color: '#374151',
-                        border: '1px solid #d1d5db', borderRadius: 6,
-                        padding: '4px 12px', fontSize: 12, fontWeight: 500, cursor: 'pointer',
-                      }}
-                    >
-                      Edit
-                    </button>
+                    {!isRestricted && (
+                      <button
+                        onClick={() => { setEditingBill(b); setShowBillModal(true); }}
+                        style={{
+                          background: '#f9fafb', color: '#374151',
+                          border: '1px solid #d1d5db', borderRadius: 6,
+                          padding: '4px 12px', fontSize: 12, fontWeight: 500, cursor: 'pointer',
+                        }}
+                      >
+                        Edit
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}
