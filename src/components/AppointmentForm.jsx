@@ -18,9 +18,13 @@ export default function AppointmentForm({ appt, presetPatient, presetDate, onClo
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
+  const SEED_DOCTORS = ['Dr. Husnain', 'Dr. Ayesha', 'Usama', 'Dr. Salman'];
+
   useEffect(() => {
     fetchAllRows(() => supabase.from('appointments').select('doctor').not('doctor', 'is', null).order('id')).then(({ data }) => {
-      setDoctors([...new Set(data.map((r) => r.doctor.trim()).filter(Boolean))].sort());
+      const fromDb = data.map((r) => r.doctor.trim()).filter(Boolean);
+      const merged = [...new Set([...SEED_DOCTORS, ...fromDb])].sort();
+      setDoctors(merged);
     });
   }, []);
 

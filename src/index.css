@@ -297,6 +297,14 @@ code { font-family: var(--mono); font-size: 13px; color: var(--accent); }
 .cal-appt.fulfilled { color: var(--green); } .cal-appt.cancelled { color: var(--red); } .cal-appt.no_show { color: var(--orange); }
 .cal-more { font-size: 11.5px; color: var(--muted); padding-left: 3px; }
 .cal-count { display: none; font: 600 12px var(--mono); color: var(--accent); padding-left: 2px; }
+.cal-today-dots { display: flex; flex-wrap: wrap; gap: 4px; padding: 3px 2px 2px; }
+.cal-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.cal-dot.scheduled { background: #0369a1; } .cal-dot.in_progress { background: #7c3aed; }
+.cal-dot.fulfilled { background: var(--green); } .cal-dot.cancelled { background: var(--red); } .cal-dot.no_show { background: var(--orange); }
+.day-popup-table { width: 100%; min-width: 560px; }
+.day-popup-table th { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); padding: 6px 10px; border-bottom: 1px solid var(--border); }
+.day-popup-table td { padding: 10px 10px; border-bottom: 1px solid var(--border); font-size: 13.5px; vertical-align: middle; }
+.day-popup-table tbody tr:hover { background: var(--row-hover); }
 @media (max-width: 720px) {
   .cal-cell { min-height: 52px; }
   .cal-appt, .cal-more { display: none; }
