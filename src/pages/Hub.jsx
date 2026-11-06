@@ -19,7 +19,7 @@ function Bars({ rows, format }) {
 }
 
 export default function Hub() {
-  const [data, setData] = useState({ patients: [], appointments: [], expenses: [], members: [], logs: [] });
+  const [data, setData] = useState({ patients: [], appointments: [], expenses: [], members: [], logs: [], billings: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [dateFrom, setDateFrom] = useState(startOfMonthKarachi());
@@ -28,16 +28,17 @@ export default function Hub() {
   useEffect(() => {
     document.title = 'Hub — ClinicPilot';
     (async () => {
-      const [patients, appointments, expenses, members, logs] = await Promise.all([
+      const [patients, appointments, expenses, members, logs, billings] = await Promise.all([
         fetchAllRows(() => supabase.from('patients').select('id, created_at').order('id')),
         fetchAllRows(() => supabase.from('appointments').select('id, procedure, status, scheduled_at').order('id')),
         fetchAllRows(() => supabase.from('expenses').select('id, category, amount, expense_date').order('id')),
         fetchAllRows(() => supabase.from('members').select('*').order('id')),
         fetchAllRows(() => supabase.from('service_log').select('id, service, date').order('id')),
+        fetchAllRows(() => supabase.from('billings').select('id, grand_total, billing_date, payment_mode').order('id')),
       ]);
-      const failed = [patients, appointments, expenses, members, logs].find((r) => r.error);
+      const failed = [patients, appointments, expenses, members, logs, billings].find((r) => r.error);
       if (failed) setError(failed.error.message);
-      setData({ patients: patients.data, appointments: appointments.data, expenses: expenses.data, members: members.data, logs: logs.data });
+      setData({ patients: patients.data, appointments: appointments.data, expenses: expenses.data, members: members.data, logs: logs.data, billings: billings.data });
       setLoading(false);
     })();
   }, []);
@@ -48,11 +49,13 @@ export default function Hub() {
     const appts = data.appointments.map((a) => ({ ...a, day: ymdKarachi(a.scheduled_at) })).filter((a) => inRange(a.day));
     const expenses = data.expenses.filter((x) => inRange(x.expense_date));
     const logs = data.logs.filter((l) => inRange(l.date));
+    const billings = data.billings.filter((b) => inRange(b.billing_date));
     return {
-      appts, expenses, logs,
+      appts, expenses, logs, billings,
       newPatients: data.patients.filter((p) => inRange(ymdKarachi(p.created_at))).length,
       spent: expenses.reduce((s, x) => s + (Number(x.amount) || 0), 0),
       fulfilled: appts.filter((a) => a.status === 'fulfilled').length,
+      revenue: billings.reduce((s, b) => s + (Number(b.grand_total) || 0), 0),
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data, dateFrom, dateTo]);
@@ -60,12 +63,13 @@ export default function Hub() {
   const dailyRows = useMemo(() => {
     const byDay = new Map();
     const row = (day) => {
-      if (!byDay.has(day)) byDay.set(day, { day, booked: 0, fulfilled: 0, circle: 0, spent: 0 });
+      if (!byDay.has(day)) byDay.set(day, { day, booked: 0, fulfilled: 0, circle: 0, spent: 0, revenue: 0 });
       return byDay.get(day);
     };
     for (const a of period.appts) { const r = row(a.day); r.booked += 1; if (a.status === 'fulfilled') r.fulfilled += 1; }
     for (const l of period.logs) row(l.date).circle += 1;
     for (const x of period.expenses) row(x.expense_date).spent += Number(x.amount) || 0;
+    for (const b of period.billings) row(b.billing_date).revenue += Number(b.grand_total) || 0;
     return [...byDay.values()].sort((a, b) => b.day.localeCompare(a.day));
   }, [period]);
 
@@ -92,6 +96,15 @@ export default function Hub() {
     value: data.expenses.filter((x) => x.expense_date.startsWith(yyyyMm)).reduce((s, x) => s + (Number(x.amount) || 0), 0),
   })), [data.expenses]);
 
+  const paymentModeRows = useMemo(() => {
+    const totals = {};
+    for (const b of period.billings) {
+      const mode = b.payment_mode || 'Other';
+      totals[mode] = (totals[mode] || 0) + (Number(b.grand_total) || 0);
+    }
+    return Object.entries(totals).map(([label, value]) => ({ label, value })).sort((a, b) => b.value - a.value);
+  }, [period.billings]);
+
   const expiring = expiringSoon(data.members).slice(0, 5);
   const show = (v) => (loading ? '—' : v);
 
@@ -108,11 +121,11 @@ export default function Hub() {
       {error && <p className="form-error" role="alert">Some data couldn't load: {error}</p>}
 
       <div className="tiles">
-        <div className="tile lead"><div className="tile-label">Appointments</div><div className="tile-value">{show(period.appts.length)}</div></div>
-        <div className="tile"><div className="tile-label">Fulfilled</div><div className="tile-value">{show(period.fulfilled)}</div></div>
-        <div className="tile"><div className="tile-label">New patients</div><div className="tile-value">{show(period.newPatients)}</div></div>
+        <div className="tile lead"><div className="tile-label">Revenue</div><div className="tile-value" style={{ fontSize: 26 }}>{show(formatMoney(period.revenue))}</div><div className="tile-sub">{period.billings.length} {period.billings.length === 1 ? 'invoice' : 'invoices'}</div></div>
         <div className="tile"><div className="tile-label">Expenses</div><div className="tile-value" style={{ fontSize: 26 }}>{show(formatMoney(period.spent))}</div></div>
-        <div className="tile"><div className="tile-label">Active Circle members</div><div className="tile-value">{show(data.members.filter(isCurrent).length)}</div></div>
+        <div className="tile"><div className="tile-label">Appointments</div><div className="tile-value">{show(period.appts.length)}</div><div className="tile-sub">{show(period.fulfilled)} fulfilled</div></div>
+        <div className="tile"><div className="tile-label">New Patients</div><div className="tile-value">{show(period.newPatients)}</div></div>
+        <div className="tile"><div className="tile-label">Active Prestige</div><div className="tile-value">{show(data.members.filter(isCurrent).length)}</div></div>
       </div>
 
       <div className="stack">
@@ -121,15 +134,16 @@ export default function Hub() {
           {dailyRows.length === 0 ? <p className="muted">{loading ? 'Loading…' : 'No activity in this period.'}</p> : (
             <div className="table-wrap">
               <table>
-                <thead><tr><th>Date</th><th>Booked</th><th>Fulfilled</th><th>Circle services</th><th>Expenses</th></tr></thead>
+                <thead><tr><th>Date</th><th>Revenue</th><th>Booked</th><th>Fulfilled</th><th>Prestige</th><th>Expenses</th></tr></thead>
                 <tbody>
                   {dailyRows.map((r) => (
                     <tr key={r.day}>
                       <td className="mono small nowrap">{formatDate(r.day)}</td>
+                      <td className="mono nowrap" style={{ fontWeight: 600, color: 'var(--accent)' }}>{r.revenue > 0 ? formatMoney(r.revenue) : <span className="muted">—</span>}</td>
                       <td className="mono">{r.booked}</td>
                       <td className="mono">{r.fulfilled}</td>
                       <td className="mono">{r.circle}</td>
-                      <td className="mono nowrap">{formatMoney(r.spent)}</td>
+                      <td className="mono nowrap">{r.spent > 0 ? formatMoney(r.spent) : <span className="muted">—</span>}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -137,6 +151,17 @@ export default function Hub() {
             </div>
           )}
         </section>
+
+        <div className="two-col" style={{ marginBottom: 0 }}>
+          <section className="panel">
+            <h2 className="panel-title">Revenue by payment mode</h2>
+            {paymentModeRows.length === 0 ? <p className="muted">{loading ? 'Loading…' : 'No revenue in this period.'}</p> : <Bars rows={paymentModeRows} format={formatMoney} />}
+          </section>
+          <section className="panel">
+            <h2 className="panel-title">Expenses by category</h2>
+            {categoryRows.length === 0 ? <p className="muted">{loading ? 'Loading…' : 'No expenses in this period.'}</p> : <Bars rows={categoryRows} format={formatMoney} />}
+          </section>
+        </div>
 
         <div className="two-col">
           <section className="panel">
@@ -149,10 +174,6 @@ export default function Hub() {
                 </table>
               </div>
             )}
-          </section>
-          <section className="panel">
-            <h2 className="panel-title">Expenses by category</h2>
-            {categoryRows.length === 0 ? <p className="muted">{loading ? 'Loading…' : 'No expenses in this period.'}</p> : <Bars rows={categoryRows} format={formatMoney} />}
           </section>
           <section className="panel">
             <h2 className="panel-title">Expenses, last 3 months</h2>

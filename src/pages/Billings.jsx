@@ -102,7 +102,12 @@ function InvoiceDoc({ bill, logoSrc }) {
       {/* Totals */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
         <div style={{ maxWidth: 300, color: '#444', fontSize: 12 }}>
-          Payment Mode: {bill.payment_mode}
+          {bill.payments?.length > 1
+            ? bill.payments.map((p, i) => (
+                <div key={i}>{p.mode}: Rs. {num(p.amount).toLocaleString()}</div>
+              ))
+            : `Payment Mode: ${bill.payment_mode}`
+          }
         </div>
         <table style={{ fontSize: 13 }}>
           <tbody>
@@ -142,6 +147,76 @@ function InvoiceDoc({ bill, logoSrc }) {
   );
 }
 
+// ─── Export Daily Report ──────────────────────────────────────────────────────
+function exportDailyReport(date, bills, logoSrc) {
+  const rows = bills.filter((b) => b.billing_date === date);
+  if (rows.length === 0) { return; }
+  const totalRevenue = rows.reduce((s, b) => s + num(b.grand_total), 0);
+  const totalPaid    = rows.reduce((s, b) => s + num(b.paid_amount), 0);
+  const totalBal     = rows.reduce((s, b) => s + num(b.balance_due), 0);
+
+  const tableRows = rows.map((b, i) => `
+    <tr>
+      <td>${i + 1}</td>
+      <td class="mono">${b.mr_no ? `MR #${b.mr_no}` : '—'}</td>
+      <td>${b.patient_name || '—'}</td>
+      <td>${(b.items || []).map((it) => it.description).filter(Boolean).join(', ') || '—'}</td>
+      <td>${b.payment_mode || '—'}</td>
+      <td class="right">Rs. ${num(b.grand_total).toLocaleString()}</td>
+      <td class="right">Rs. ${num(b.paid_amount).toLocaleString()}</td>
+      <td class="right ${num(b.balance_due) > 0 ? 'red' : ''}">${num(b.balance_due) > 0 ? `Rs. ${num(b.balance_due).toLocaleString()}` : '—'}</td>
+    </tr>`).join('');
+
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
+  <title>Daily Report — ${formatDate(date)}</title>
+  <style>
+    body { font-family: Arial, sans-serif; font-size: 12px; color: #111; margin: 0; padding: 24px; }
+    .header { display: flex; align-items: flex-start; gap: 20; margin-bottom: 16px; }
+    .header img { width: 80px; object-fit: contain; }
+    h1 { font-size: 18px; margin: 0 0 4px; }
+    .subtitle { color: #555; font-size: 11px; }
+    .report-title { font-size: 14px; font-weight: bold; margin: 16px 0 10px; border-bottom: 2px solid #ccc; padding-bottom: 6px; }
+    table { width: 100%; border-collapse: collapse; }
+    th { background: #f0f0f0; padding: 7px 8px; text-align: left; font-size: 11px; border-bottom: 2px solid #ccc; }
+    td { padding: 6px 8px; border-bottom: 1px solid #e5e5e5; vertical-align: top; }
+    .right { text-align: right; }
+    .mono { font-family: monospace; }
+    .red { color: #c00; font-weight: 600; }
+    .totals { margin-top: 14px; display: flex; justify-content: flex-end; }
+    .totals table { width: auto; }
+    .totals td { border: none; padding: 3px 10px; }
+    .totals .label { color: #555; }
+    .totals .grand { font-weight: bold; font-size: 13px; }
+    @media print { body { padding: 0; } }
+  </style></head><body>
+  <div class="header">
+    ${logoSrc ? `<img src="${logoSrc}" alt="Revive" />` : ''}
+    <div>
+      <h1>${CLINIC_NAME}</h1>
+      <div class="subtitle">${CLINIC_ADDR}<br>${CLINIC_PHONE}</div>
+    </div>
+  </div>
+  <div class="report-title">Daily Report — ${formatDate(date)} &nbsp;·&nbsp; ${rows.length} ${rows.length === 1 ? 'entry' : 'entries'}</div>
+  <table>
+    <thead><tr>
+      <th>#</th><th>MR #</th><th>Patient</th><th>Procedures</th><th>Mode</th>
+      <th class="right">Total</th><th class="right">Paid</th><th class="right">Balance</th>
+    </tr></thead>
+    <tbody>${tableRows}</tbody>
+  </table>
+  <div class="totals"><table><tbody>
+    <tr><td class="label">Total Revenue:</td><td class="right grand">Rs. ${totalRevenue.toLocaleString()}</td></tr>
+    <tr><td class="label">Total Paid:</td><td class="right">Rs. ${totalPaid.toLocaleString()}</td></tr>
+    ${totalBal > 0 ? `<tr><td class="label red">Total Balance:</td><td class="right red">Rs. ${totalBal.toLocaleString()}</td></tr>` : ''}
+  </tbody></table></div>
+  <script>window.onload=function(){window.print();}<\/script>
+  </body></html>`;
+
+  const w = window.open('', '_blank');
+  w.document.write(html);
+  w.document.close();
+}
+
 // ─── BillingForm modal ────────────────────────────────────────────────────────
 function BillingForm({ initial, patients, onClose, onSaved }) {
   const [patientSearch, setPatientSearch] = useState(initial?.patient_name || '');
@@ -151,8 +226,12 @@ function BillingForm({ initial, patients, onClose, onSaved }) {
   const [patientAge, setPatientAge] = useState(initial?.patient_age || '');
   const [patientGender, setPatientGender] = useState(initial?.patient_gender || '');
   const [items, setItems] = useState(initial?.items?.length ? initial.items : [emptyItem()]);
-  const [paymentMode, setPaymentMode] = useState(initial?.payment_mode || 'Cash');
-  const [paidAmount, setPaidAmount] = useState(initial?.paid_amount ?? '');
+  // Multi-payment: array of { mode, amount }
+  const initPayments = () => {
+    if (initial?.payments?.length) return initial.payments;
+    return [{ mode: initial?.payment_mode || 'Cash', amount: initial?.paid_amount ?? '' }];
+  };
+  const [payments, setPayments] = useState(initPayments);
   const [notes, setNotes] = useState(initial?.notes || '');
   const [billingDate, setBillingDate] = useState(initial?.billing_date || todayKarachi());
   const [addingNew, setAddingNew] = useState(false);
@@ -195,10 +274,16 @@ function BillingForm({ initial, patients, onClose, onSaved }) {
   const addItem = () => setItems((prev) => [...prev, emptyItem()]);
   const removeItem = (i) => setItems((prev) => prev.filter((_, idx) => idx !== i));
 
+  // Payment helpers
+  const updatePayment = (i, field, value) =>
+    setPayments((prev) => prev.map((p, idx) => idx === i ? { ...p, [field]: value } : p));
+  const addPayment = () => setPayments((prev) => [...prev, { mode: 'Cash', amount: '' }]);
+  const removePayment = (i) => setPayments((prev) => prev.filter((_, idx) => idx !== i));
+
   const subtotal = items.reduce((s, it) => s + num(it.amount), 0);
   const grandTotal = subtotal;
-  const paid = num(paidAmount) || grandTotal;
-  const balance = grandTotal - paid;
+  const totalPaid = payments.reduce((s, p) => s + num(p.amount), 0) || grandTotal;
+  const balance = grandTotal - totalPaid;
 
   async function handleSave(e) {
     e.preventDefault();
@@ -239,6 +324,11 @@ function BillingForm({ initial, patients, onClose, onSaved }) {
         }
       }
 
+      // Derive payment_mode: single mode or "Multiple"
+      const filledPayments = payments.filter((p) => num(p.amount) > 0 || payments.length === 1);
+      const derivedMode = filledPayments.length === 1 ? filledPayments[0].mode : 'Multiple';
+      const derivedPaid = filledPayments.reduce((s, p) => s + num(p.amount), 0) || grandTotal;
+
       const payload = {
         patient_id: resolvedPatientId,
         patient_name: patientSearch.trim(),
@@ -248,9 +338,10 @@ function BillingForm({ initial, patients, onClose, onSaved }) {
         items,
         subtotal,
         grand_total: grandTotal,
-        payment_mode: paymentMode,
-        paid_amount: num(paidAmount) || grandTotal,
-        balance_due: Math.max(0, balance),
+        payment_mode: derivedMode,
+        paid_amount: derivedPaid,
+        payments: filledPayments,
+        balance_due: Math.max(0, grandTotal - derivedPaid),
         notes: notes || null,
         billing_date: billingDate,
       };
@@ -397,20 +488,32 @@ function BillingForm({ initial, patients, onClose, onSaved }) {
             <span style={{ color: 'var(--accent)' }}>{formatMoney(grandTotal)}</span>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            <div>
-              <label className="label">PAYMENT MODE</label>
-              <select className="input" value={paymentMode} onChange={(e) => setPaymentMode(e.target.value)}>
+          <label className="label" style={{ marginBottom: 6 }}>PAYMENT</label>
+          {payments.map((p, i) => (
+            <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: 8, marginBottom: 8, alignItems: 'center' }}>
+              <select className="input" value={p.mode} onChange={(e) => updatePayment(i, 'mode', e.target.value)}>
                 {PAYMENT_MODES.map((m) => <option key={m}>{m}</option>)}
               </select>
+              <input
+                className="input"
+                type="number"
+                min="0"
+                value={p.amount}
+                onChange={(e) => updatePayment(i, 'amount', e.target.value)}
+                placeholder={i === 0 ? (grandTotal || '0') : '0'}
+              />
+              {payments.length > 1 ? (
+                <button type="button" onClick={() => removePayment(i)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', fontSize: 20, lineHeight: 1, padding: '0 4px' }}>×</button>
+              ) : (
+                <button type="button" onClick={addPayment} title="Add another payment method" style={{ background: 'none', border: '1px dashed var(--accent)', borderRadius: 6, cursor: 'pointer', color: 'var(--accent)', fontSize: 18, lineHeight: 1, padding: '2px 8px' }}>+</button>
+              )}
             </div>
-            <div>
-              <label className="label">PAID AMOUNT (PKR)</label>
-              <input className="input" type="number" min="0" value={paidAmount} onChange={(e) => setPaidAmount(e.target.value)} placeholder={grandTotal || '0'} />
-            </div>
-          </div>
+          ))}
+          {payments.length > 1 && (
+            <button type="button" onClick={addPayment} className="btn btn-sm" style={{ marginBottom: 8 }}>+ Add Payment</button>
+          )}
           {balance > 0 && (
-            <div style={{ marginTop: 8, color: '#dc2626', fontWeight: 600 }}>
+            <div style={{ marginTop: 4, color: '#dc2626', fontWeight: 600 }}>
               Balance Due: {formatMoney(balance)}
             </div>
           )}
@@ -623,7 +726,7 @@ export default function Billings({ isRestricted = false }) {
         {filterDate && <button className="btn btn-sm" onClick={() => setFilterDate('')}>✕ Clear</button>}
       </div>
       {/* Date shortcuts */}
-      <div style={{ display: 'flex', gap: 6, marginBottom: 16, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
         {[
           { label: 'Today',              value: todayKarachi() },
           { label: 'Yesterday',          value: yesterdayKarachi() },
@@ -641,6 +744,19 @@ export default function Billings({ isRestricted = false }) {
           </button>
         ))}
       </div>
+      {/* Export Daily Report */}
+      {filterDate && (
+        <div style={{ marginBottom: 16 }}>
+          <button
+            type="button"
+            className="btn btn-sm"
+            style={{ gap: 6 }}
+            onClick={() => exportDailyReport(filterDate, filtered, logoSrc)}
+          >
+            🖨 Export Daily Report — {formatDate(filterDate)}
+          </button>
+        </div>
+      )}
 
       {/* Table */}
       {loading ? (
