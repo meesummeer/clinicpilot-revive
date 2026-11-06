@@ -16,11 +16,13 @@ import CircleMemberProfile from './pages/circle/CircleMemberProfile';
 import CircleServiceLog from './pages/circle/CircleServiceLog';
 import CircleAnalytics from './pages/circle/CircleAnalytics';
 import VendorTracker from './pages/VendorTracker';
+import Billings from './pages/Billings';
 
 const NAV = [
   { to: '/hub', label: 'Hub', icon: <path d="M5 20v-7M12 20V4M19 20v-11" /> },
   { to: '/patients', label: 'Patients', icon: <><circle cx="9" cy="8" r="4" /><path d="M2 21c0-4 3-7 7-7s7 3 7 7" /><path d="M16 4.5a4 4 0 010 7M18 14.5c2.4.8 4 3 4 6.5" /></> },
   { to: '/appointments', label: 'Appointments', icon: <><rect x="4" y="5" width="16" height="16" rx="2" /><path d="M8 3v4M16 3v4M4 10h16" /></> },
+  { to: '/billings', label: 'Billings', icon: <><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z" /><path d="M9 8h6M9 12h4M9 16h3" /></> },
   { to: '/expenses', label: 'Expenses', icon: <><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z" /><path d="M9 8h6M9 12h6" /></> },
   { to: '/circle', label: 'Circle', icon: <circle cx="12" cy="12" r="8" /> },
   { to: '/vendors', label: 'Vendors', icon: <><path d="M3 9h18M3 15h18M9 3v18M15 3v18" /><rect x="3" y="3" width="18" height="18" rx="2" /></> },
@@ -72,6 +74,7 @@ export default function App() {
           <Route path="/patients" element={<Patients />} />
           <Route path="/patients/:id" element={<PatientProfile />} />
           <Route path="/appointments" element={<Appointments />} />
+          <Route path="/billings" element={<Billings />} />
           <Route path="/expenses" element={<Expenses />} />
           <Route path="/circle" element={<CircleLayout session={session} />}>
             <Route index element={<CircleOverview />} />
