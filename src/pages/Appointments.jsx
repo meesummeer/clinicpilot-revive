@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import { supabase, fetchAllRows } from '../lib/supabaseClient';
 import { APPOINTMENT_STATUS, formatDate, formatTime, plural, toWhatsAppNumber, todayKarachi, ymdKarachi } from '../lib/format';
 import AppointmentForm from '../components/AppointmentForm';
-import Modal from '../components/Modal';
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTH_FMT = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' });
@@ -18,7 +17,6 @@ export default function Appointments() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [modal, setModal] = useState(null); // null closed, 'new', or a row
-  const [dayPopup, setDayPopup] = useState(null); // date string or null
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -91,7 +89,7 @@ export default function Appointments() {
             const classes = ['cal-cell', day === selected && 'selected', day === today && 'today'].filter(Boolean).join(' ');
             const isToday = day === today;
             return (
-              <div key={day} className={classes} onClick={() => { setSelected(day); if (list.length > 0) setDayPopup(day); }}>
+              <div key={day} className={classes} onClick={() => setSelected(day)}>
                 <button type="button" className="cal-date" aria-label={`${formatDate(day)}, ${plural(list.length, 'appointment')}`} aria-pressed={day === selected}>{Number(day.slice(8))}</button>
                 {list.length > 0 && <span className="cal-count" aria-hidden="true">{list.length}</span>}
                 {isToday ? (
@@ -105,7 +103,7 @@ export default function Appointments() {
                 ) : (
                   <>
                     {list.slice(0, MAX_IN_CELL).map((a) => (
-                      <button type="button" key={a.id} className={`cal-appt ${a.status}`} title={`${formatTime(a.scheduled_at)} ${a.patients?.name} · ${APPOINTMENT_STATUS[a.status]}`} onClick={(e) => { e.stopPropagation(); setSelected(day); setDayPopup(day); }}>
+                      <button type="button" key={a.id} className={`cal-appt ${a.status}`} title={`${formatTime(a.scheduled_at)} ${a.patients?.name} · ${APPOINTMENT_STATUS[a.status]}`} onClick={(e) => { e.stopPropagation(); setSelected(day); setModal(a); }}>
                         <span>{formatTime(a.scheduled_at).replace(' ', '').toLowerCase()} {a.patients?.name}</span>
                       </button>
                     ))}
@@ -148,58 +146,6 @@ export default function Appointments() {
           </div>
         )}
       </section>
-
-      {/* Day detail popup */}
-      {dayPopup && (() => {
-        const popList = byDay.get(dayPopup) || [];
-        return (
-          <Modal title={formatDate(dayPopup)} onClose={() => setDayPopup(null)}>
-            <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span className="muted small">{plural(popList.length, 'appointment')}</span>
-              <button className="btn btn-primary btn-sm" onClick={() => { setDayPopup(null); setModal('new'); }}>+ New</button>
-            </div>
-            <div className="table-wrap">
-              <table className="day-popup-table">
-                <thead>
-                  <tr>
-                    <th style={{ width: 72 }}>Time</th>
-                    <th>Patient</th>
-                    <th>Procedure</th>
-                    <th>Doctor</th>
-                    <th>Status</th>
-                    <th style={{ width: 80 }}></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {popList.map((a) => {
-                    const wa = toWhatsAppNumber(a.patients?.phone);
-                    return (
-                      <tr key={a.id}>
-                        <td className="mono small nowrap">{formatTime(a.scheduled_at)}</td>
-                        <td>
-                          <Link className="link-plain" to={`/patients/${a.patient_id}`} onClick={() => setDayPopup(null)}>
-                            <strong>{a.patients?.name}</strong>
-                          </Link>
-                          <br /><span className="muted small mono">MR #{a.patients?.mr_no}</span>
-                        </td>
-                        <td>{a.procedure || <span className="muted">—</span>}</td>
-                        <td>{a.doctor || <span className="muted">—</span>}</td>
-                        <td><span className={`badge ${a.status}`}>{APPOINTMENT_STATUS[a.status]}</span></td>
-                        <td>
-                          <div className="actions" style={{ gap: 4 }}>
-                            <button type="button" className="btn btn-sm" onClick={() => { setDayPopup(null); setModal(a); }}>Edit</button>
-                            {wa && <a className="btn btn-sm" href={`https://wa.me/${wa}`} target="_blank" rel="noreferrer">WA</a>}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </Modal>
-        );
-      })()}
 
       {modal && (
         <AppointmentForm
