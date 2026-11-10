@@ -11,7 +11,7 @@ export default function CircleMembers() {
   const [plan, setPlan] = useState('');
   const [status, setStatus] = useState('');
 
-  useEffect(() => { document.title = 'Members — Circle'; }, []);
+  useEffect(() => { document.title = 'Members — Prestige'; }, []);
 
   const rows = useMemo(() => {
     const text = q.trim().toLowerCase();
@@ -40,9 +40,9 @@ export default function CircleMembers() {
           <thead><tr><th>Card No</th><th>Name</th><th>Phone</th><th>Plan</th><th>Start</th><th>End</th><th>Status</th><th>Actions</th></tr></thead>
           <tbody>
             {rows.map((m) => (
-              <tr key={m.id} className="row-link" onClick={(e) => { if (!e.target.closest('a, button')) navigate(`/circle/members/${m.id}`); }}>
+              <tr key={m.id} className="row-link" onClick={(e) => { if (!e.target.closest('a, button')) navigate(`/prestige/members/${m.id}`); }}>
                 <td><Chip member={m} /></td>
-                <td className="td-name"><Link to={`/circle/members/${m.id}`}>{m.name}</Link></td>
+                <td className="td-name"><Link to={`/prestige/members/${m.id}`}>{m.name}</Link></td>
                 <td className="mono small nowrap">{m.phone}</td>
                 <td className="nowrap">{planOf(m).label}</td>
                 <td className="mono small nowrap">{formatDate(m.start_date)}</td>
@@ -50,7 +50,7 @@ export default function CircleMembers() {
                 <td><StatusBadge member={m} /></td>
                 <td>
                   <div className="actions">
-                    <Link className="btn btn-sm" to={`/circle/log?member=${m.id}`} aria-label={`Log service for ${m.name}`}>Log</Link>
+                    <Link className="btn btn-sm" to={`/prestige/log?member=${m.id}`} aria-label={`Log service for ${m.name}`}>Log</Link>
                     <button type="button" className="btn btn-sm" aria-label={`Edit ${m.name}`} onClick={() => openEditMember(m)}>Edit</button>
                   </div>
                 </td>

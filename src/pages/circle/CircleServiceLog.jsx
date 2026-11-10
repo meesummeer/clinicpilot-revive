@@ -29,7 +29,7 @@ export default function CircleServiceLog() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
-  useEffect(() => { document.title = 'Service Log — Circle'; }, []);
+  useEffect(() => { document.title = 'Service Log — Prestige'; }, []);
 
   const member = members.find((m) => m.id === memberId) || null;
   const results = useMemo(() => {

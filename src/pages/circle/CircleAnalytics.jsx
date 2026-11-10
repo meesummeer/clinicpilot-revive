@@ -6,7 +6,7 @@ import { Chip, ExpiringList } from './parts';
 
 export default function CircleAnalytics() {
   const { members, logs } = useOutletContext();
-  useEffect(() => { document.title = 'Analytics — Circle'; }, []);
+  useEffect(() => { document.title = 'Analytics — Prestige'; }, []);
 
   const counts = {}, perMember = {};
   for (const l of logs) {
@@ -41,7 +41,7 @@ export default function CircleAnalytics() {
         <section className="panel">
           <h2 className="panel-title">Most active members</h2>
           {top.length === 0 ? <p className="muted">No activity yet.</p> : top.map(({ m, n }) => (
-            <Link className="list-row" key={m.id} to={`/circle/members/${m.id}`}>
+            <Link className="list-row" key={m.id} to={`/prestige/members/${m.id}`}>
               <span className="list-main"><span className="list-name">{m.name}</span> <Chip member={m} /></span>
               <span className="mono small nowrap">{plural(n, 'service')}</span>
             </Link>

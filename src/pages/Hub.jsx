@@ -63,11 +63,11 @@ export default function Hub() {
   const dailyRows = useMemo(() => {
     const byDay = new Map();
     const row = (day) => {
-      if (!byDay.has(day)) byDay.set(day, { day, booked: 0, fulfilled: 0, circle: 0, spent: 0, revenue: 0 });
+      if (!byDay.has(day)) byDay.set(day, { day, booked: 0, fulfilled: 0, prestige: 0, spent: 0, revenue: 0 });
       return byDay.get(day);
     };
     for (const a of period.appts) { const r = row(a.day); r.booked += 1; if (a.status === 'fulfilled') r.fulfilled += 1; }
-    for (const l of period.logs) row(l.date).circle += 1;
+    for (const l of period.logs) row(l.date).prestige += 1;
     for (const x of period.expenses) row(x.expense_date).spent += Number(x.amount) || 0;
     for (const b of period.billings) row(b.billing_date).revenue += Number(b.grand_total) || 0;
     return [...byDay.values()].sort((a, b) => b.day.localeCompare(a.day));
@@ -142,7 +142,7 @@ export default function Hub() {
                       <td className="mono nowrap" style={{ fontWeight: 600, color: 'var(--accent)' }}>{r.revenue > 0 ? formatMoney(r.revenue) : <span className="muted">—</span>}</td>
                       <td className="mono">{r.booked}</td>
                       <td className="mono">{r.fulfilled}</td>
-                      <td className="mono">{r.circle}</td>
+                      <td className="mono">{r.prestige}</td>
                       <td className="mono nowrap">{r.spent > 0 ? formatMoney(r.spent) : <span className="muted">—</span>}</td>
                     </tr>
                   ))}
@@ -180,11 +180,11 @@ export default function Hub() {
             <Bars rows={monthRows} format={formatMoney} />
           </section>
           <section className="panel">
-            <h2 className="panel-title">Circle memberships expiring soon</h2>
+            <h2 className="panel-title">Prestige memberships expiring soon</h2>
             {expiring.length === 0 ? <p className="muted">{loading ? 'Loading…' : 'No memberships are expiring soon.'}</p> : expiring.map((m) => {
               const d = daysUntil(m.end_date);
               return (
-                <Link key={m.id} className="list-row" to={`/circle/members/${m.id}`}>
+                <Link key={m.id} className="list-row" to={`/prestige/members/${m.id}`}>
                   <span className="list-main"><span className="list-name">{m.name}</span> <span className="chip">{m.card_number}</span></span>
                   <span className="badge expiring">{d === 0 ? 'Today' : plural(d, 'day')}</span>
                 </Link>

@@ -6,7 +6,7 @@ import { ExpiringList } from './parts';
 
 export default function CircleOverview() {
   const { members, logs } = useOutletContext();
-  useEffect(() => { document.title = 'Circle — ClinicPilot'; }, []);
+  useEffect(() => { document.title = 'Prestige — ClinicPilot'; }, []);
 
   const month = todayKarachi().slice(0, 7);
   const expiringThisMonth = members.filter((m) => isCurrent(m) && (m.end_date || '').startsWith(month)).length;
@@ -31,7 +31,7 @@ export default function CircleOverview() {
           {recent.length === 0 ? <p className="muted">No services logged yet.</p> : recent.map((l) => {
             const m = members.find((x) => x.id === l.member_id);
             return (
-              <Link className="list-row" key={l.id} to={`/circle/members/${l.member_id}`}>
+              <Link className="list-row" key={l.id} to={`/prestige/members/${l.member_id}`}>
                 <span className="list-main"><span className="list-name">{m ? m.name : 'Unknown member'}</span><br /><span className="muted small">{l.service}</span></span>
                 <span className="mono small muted nowrap">{formatDate(l.date)}</span>
               </Link>

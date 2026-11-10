@@ -44,7 +44,7 @@ export function ExpiringList({ members }) {
   return members.map((m) => {
     const d = daysUntil(m.end_date);
     return (
-      <Link className="list-row" key={m.id} to={`/circle/members/${m.id}`}>
+      <Link className="list-row" key={m.id} to={`/prestige/members/${m.id}`}>
         <span className="list-main"><span className="list-name">{m.name}</span> <Chip member={m} /><br /><span className="muted small">Ends {formatDate(m.end_date)}</span></span>
         <span className="badge expiring">{d === 0 ? 'Today' : plural(d, 'day')}</span>
       </Link>
@@ -63,7 +63,7 @@ export function LogTable({ entries, members, onDelete }) {
             return (
               <tr key={l.id}>
                 <td className="mono small nowrap">{formatDate(l.date)}</td>
-                {members && <td>{m ? <Link className="link-plain" to={`/circle/members/${m.id}`}>{m.name}</Link> : 'Unknown'}</td>}
+                {members && <td>{m ? <Link className="link-plain" to={`/prestige/members/${m.id}`}>{m.name}</Link> : 'Unknown'}</td>}
                 <td>{l.service}{l.notes && <><br /><span className="muted small pre-wrap">{l.notes}</span></>}</td>
                 <td className="small">{l.logged_by || '—'}</td>
                 <td><button type="button" className="btn btn-sm btn-danger" aria-label={`Delete ${l.service} entry from ${formatDate(l.date)}`} onClick={() => onDelete(l)}>Delete</button></td>

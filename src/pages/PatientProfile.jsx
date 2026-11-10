@@ -76,8 +76,8 @@ export default function PatientProfile() {
 
       {circleMember && (
         <section className="panel" style={{ marginBottom: 18 }}>
-          <h2 className="panel-title">Circle membership</h2>
-          <Link className="list-row" to={`/circle/members/${circleMember.id}`}>
+          <h2 className="panel-title">Prestige membership</h2>
+          <Link className="list-row" to={`/prestige/members/${circleMember.id}`}>
             <span className="list-main"><span className="chip">{circleMember.card_number}</span> <span className="list-name">{planOf(circleMember).label} plan</span><br /><span className="muted small">Matched by phone number · Ends {formatDate(circleMember.end_date)}</span></span>
             <span className={`badge ${displayStatus(circleMember)}`}>{STATUS_LABEL[displayStatus(circleMember)]}</span>
           </Link>

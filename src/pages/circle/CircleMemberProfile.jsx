@@ -14,7 +14,7 @@ export default function CircleMemberProfile() {
   const deleteLog = useDeleteLog(reload);
   const m = members.find((x) => x.id === id);
 
-  useEffect(() => { if (m) document.title = `${m.name} — Circle`; }, [m]);
+  useEffect(() => { if (m) document.title = `${m.name} — Prestige`; }, [m]);
 
   if (!m) return <><Link className="back" to="/prestige/members">← Members</Link><div className="panel empty">This member doesn't exist or has been deleted.</div></>;
 
